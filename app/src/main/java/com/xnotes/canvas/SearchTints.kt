@@ -76,7 +76,7 @@ class SearchTints(
             boxFrame = f
         }
         val visible = state.visiblePageRange() ?: return
-        val accent = state.palette.accent
+        val accent = state.contentAccent
         val faint = accent.withAlpha(FAINT_ALPHA)
         for (page in visible) {
             for (hit in res.hitsOn(page)) if (hit !== current) paint(r, hit, faint, null)

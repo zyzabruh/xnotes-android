@@ -2305,7 +2305,7 @@ class InteractionController(
         val shape = sel.item as ShapeItem
         if (state.pageRects.getOrNull(sel.pageIndex) == null) return
         val ot = com.xnotes.core.infinite.OverlayTessellator
-        val accent = state.palette.accent
+        val accent = state.contentAccent(sel.pageIndex)
         for (d in shape.edgeDots(ot.EDGE_DOT_MIN_PX / state.zoom)) {
             r.fillCircle(state.fromPageSpace(sel.pageIndex, d.at), ot.EDGE_DOT_PX / 2.0 / state.zoom, accent.withAlpha(140))
         }
@@ -2651,7 +2651,7 @@ class InteractionController(
     /** A cross on every connection point of the pages in view, and a ring on each lit one. */
     private fun drawConnectionMarks(r: Renderer) {
         val ot = com.xnotes.core.infinite.OverlayTessellator
-        val accent = state.palette.accent
+        val accent = state.contentAccent
         val view = Rect.fromPoints(state.viewportToContent(Pt.ZERO), state.viewportToContent(Pt(state.viewportW.toDouble(), state.viewportH.toDouble())))
         val pen = Pen(accent, ot.MARK_LINE_PX, cosmetic = true)
         val arm = ot.MARK_PX / 2.0 / state.zoom
@@ -3209,7 +3209,7 @@ class InteractionController(
         val c = sel.item as ConnectorItem
         val page = state.document.pages[sel.pageIndex]
         val ot = com.xnotes.core.infinite.OverlayTessellator
-        val accent = state.palette.accent
+        val accent = state.contentAccent(sel.pageIndex)
         val z = state.zoom
         fun at(p: Pt) = state.fromPageSpace(sel.pageIndex, p)
         for (d in c.midpointDots()) r.fillCircle(at(d), ot.EDGE_DOT_PX / 2.0 / z, accent.withAlpha(140))
@@ -4591,13 +4591,13 @@ class InteractionController(
                         val base = ResizeMath.obbTopMid(obb)
                         val stemTop = Pt(base.x + moveOffset.x, base.y + moveOffset.y)
                         val grip = Pt(rp.x + moveOffset.x, rp.y + moveOffset.y)
-                        r.strokePolyline(listOf(grip, stemTop), Pen(state.palette.accent, 1.3, cosmetic = true))
-                        r.fillCircle(grip, side * 0.6, state.palette.accent)
+                        r.strokePolyline(listOf(grip, stemTop), Pen(state.contentAccent, 1.3, cosmetic = true))
+                        r.fillCircle(grip, side * 0.6, state.contentAccent)
                     }
                 }
                 for (h in selectionResizeHandles()) {
                     val c = Pt(h.content.x + moveOffset.x, h.content.y + moveOffset.y)
-                    r.fillRect(Rect(c.x - side / 2, c.y - side / 2, side, side), state.palette.accent)
+                    r.fillRect(Rect(c.x - side / 2, c.y - side / 2, side, side), state.contentAccent)
                 }
                 drawEditDots(r)
                 drawConnectorChrome(r)
@@ -4633,7 +4633,7 @@ class InteractionController(
      * in device px, which is what the conversion here produces.
      */
     private fun chromePen(width: Double): Pen = Pen(
-        state.palette.accent,
+        state.contentAccent,
         width,
         cosmetic = true,
         dashed = true,

@@ -23,6 +23,26 @@ data class Palette(
 ) {
     fun accentAlpha(alpha: Int): Rgba = accent.withAlpha(alpha)
 
+    /**
+     * [accent], or a light or dark twin of it, so content chrome reads on [background].
+     *
+     *  Chrome such as a selection, a lasso or a caret is painted over the note's own paper,
+     *  which follows the note rather than the theme, so in dark mode a pale accent on white
+     *  paper is all but invisible (issue #325). When the accent and the background sit too
+     *  close in luminance, the accent is blended toward black on a light background and
+     *  toward white on a dark one, keeping its hue as far as the contrast allows.
+     */
+    fun accentOn(background: Rgba): Rgba {
+        val bg = ColorMath.luminance(background)
+        if (abs(ColorMath.luminance(accent) - bg) >= MIN_LUMINANCE_GAP) return accent
+        val ink = if (bg > 0.5) BLACK else WHITE
+        for (step in 1..BLEND_STEPS) {
+            val candidate = ColorMath.mix(accent, ink, step.toDouble() / BLEND_STEPS)
+            if (abs(ColorMath.luminance(candidate) - bg) >= MIN_LUMINANCE_GAP) return candidate
+        }
+        return ink
+    }
+
     val onAccent: Rgba get() = materialColors.onPrimary
     val selectionBackground: Rgba get() = materialColors.primaryContainer
     val selectionForeground: Rgba get() = materialColors.onPrimaryContainer
@@ -34,6 +54,15 @@ data class Palette(
     val danger: Rgba get() = materialColors.error
 
     companion object {
+        /** How far the chrome accent must sit from the paper's luminance to read on it. */
+        private const val MIN_LUMINANCE_GAP = 0.35
+
+        /** Blends tried when hunting for a twin of the accent that clears the gap. */
+        private const val BLEND_STEPS = 4
+
+        private val BLACK = Rgba(0, 0, 0, 255)
+        private val WHITE = Rgba(255, 255, 255, 255)
+
         /** Stands in wherever no theme is provided yet (and in tests). */
         val DEFAULT: Palette by lazy { materialDark(MaterialColors.seeded(Preferences.DEFAULT_MATERIAL_DUAL, dark = true)) }
 
@@ -106,13 +135,16 @@ fun Palette.audioLook(): AudioLook = with(materialColors) {
 /** Small pure colour math for accent derivations (spec 11 §1). */
 object ColorMath {
 
+    /** Perceived luminance 0..1 (Rec. 601 weights), alpha ignored. */
+    fun luminance(c: Rgba): Double = (0.299 * c.r + 0.587 * c.g + 0.114 * c.b) / 255.0
+
     /**
      * Cap an accent's perceived luminance for the light theme. Colours brighter
      * than [maxLuminance] are scaled down in place (hue and saturation kept),
      * so a bright yellow deepens to gold; colours already dark enough pass through.
      */
     fun darkenForLight(c: Rgba, maxLuminance: Double = 0.35): Rgba {
-        val lum = (0.299 * c.r + 0.587 * c.g + 0.114 * c.b) / 255.0
+        val lum = luminance(c)
         if (lum <= maxLuminance) return c
         val k = maxLuminance / lum
         fun ch(v: Int) = (v * k).toInt().coerceIn(0, 255)

@@ -853,6 +853,14 @@ class CanvasState(
 
     fun paperColor(page: Page): Rgba = effectivePageColor(page) ?: palette.paper
 
+    /** The chrome accent that reads on [pageIndex]'s paper (see [Palette.accentOn]), falling
+     *  back to the theme paper when the page is gone. */
+    fun contentAccent(pageIndex: Int): Rgba =
+        palette.accentOn(document.pages.getOrNull(pageIndex)?.let { paperColor(it) } ?: palette.paper)
+
+    /** [contentAccent] for the page in front: what chrome with no page of its own draws with. */
+    val contentAccent: Rgba get() = contentAccent(currentPageIndex())
+
     /**
      * The pages the view may draw (and touch). Vertical mode shows everything the viewport
      * reaches. The paginated view shows exactly one row at any moment: [currentRow]

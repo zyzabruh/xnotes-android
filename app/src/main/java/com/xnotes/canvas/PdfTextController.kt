@@ -282,7 +282,7 @@ class PdfTextController(
             }
             return
         }
-        val accent = state.palette.accent
+        val accent = state.contentAccent(sel.start.page)
         val tint = accent.withAlpha(70)
         forEachQuad(sel) { page, q -> for (c in contentRects(page, q)) r.fillRect(c, tint) }
         caret(sel, atEnd = false)?.let { handles.draw(r, handles.center(it.tip, isStart = true), isStart = true, accent) }

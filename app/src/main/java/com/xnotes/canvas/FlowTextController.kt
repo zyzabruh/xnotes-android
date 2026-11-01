@@ -621,7 +621,7 @@ class FlowTextController(
     fun drawOverlay(r: com.xnotes.core.pal.Renderer) {
         if (!active) return
         val f = frame() ?: return
-        val accent = state.palette.accent
+        val accent = state.contentAccent
         if (!selection.collapsed) {
             for ((pi, rect) in f.selectionRects(selection)) {
                 if (state.pageRects.getOrNull(pi) == null) continue

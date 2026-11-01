@@ -269,6 +269,13 @@ fun PreferencesPane(
                 Chip(stringResource(R.string.pan_none), prefs.zoomLockPan == "none") { update(prefs.copy(zoomLockPan = "none")) }
             }
             CheckRow(stringResource(R.string.pref_detect_shapes), prefs.detectShapes) { update(prefs.copy(detectShapes = it)) }
+            FieldLabel(stringResource(R.string.pref_pen_stabilization, (prefs.penStabilization + 0.5).toInt()))
+            Slider(
+                value = prefs.penStabilization.toFloat(),
+                onValueChange = { update(prefs.copy(penStabilization = it.toDouble())) },
+                valueRange = 0f..100f,
+                modifier = Modifier.width(280.dp),
+            )
             FieldLabel(stringResource(R.string.pref_pen_button_hold))
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),

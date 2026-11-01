@@ -33,6 +33,7 @@ import com.xnotes.core.model.Stroke
 import com.xnotes.core.model.TapeItem
 import com.xnotes.core.model.TapeMode
 import com.xnotes.core.shapes.ShapeKind
+import com.xnotes.core.stroke.PenStabilizer
 import com.xnotes.core.stroke.Sample
 import com.xnotes.core.stroke.Scribble
 import com.xnotes.core.stroke.ShapeRecognizer
@@ -158,6 +159,12 @@ class InfiniteInteraction(
 
     /** Whether a finger draws, or pans instead. Mirrors the paged canvas's preference. */
     var fingerDraws: Boolean = false
+
+    /** Pen stabilisation, 0 (off) .. 100 (high): how far the drawn path trails the nib. */
+    var penStabilization: Double = 0.0
+
+    /** The stabiliser the stroke currently under the pen is written through. */
+    private val stabilizer = PenStabilizer()
 
     /** Tool the stylus side button arms while it is held; null leaves the button alone. */
     var penButtonTool: Tool? = Tool.ERASER
@@ -797,6 +804,8 @@ class InfiniteInteraction(
         // left running keeps the buffer queue full and puts a frame of lag under the pen.
         setInteractive(false, false)
         strokeStartTimeMs = e.eventTime
+        stabilizer.lambda = PenStabilizer.lambdaFor(penStabilization)
+        stabilizer.begin(vx, vy)
         val p = viewport.viewportToContent(Pt(vx, vy))
         stroke.addSample(Sample(p.x, p.y, pressureOf(e, 0)))
         liveStroke = stroke
@@ -839,7 +848,11 @@ class InfiniteInteraction(
 
     private fun addStrokePoint(vx: Double, vy: Double, pressure: Double, timeMs: Long, force: Boolean) {
         val stroke = liveStroke ?: return
-        val p = viewport.viewportToContent(Pt(vx, vy))
+        // The stabiliser runs on the way in, in viewport px, and leaves the lift-off point and a
+        // straight line alone: a straight segment has no shake to steady, and ink must finish
+        // exactly where the nib lifted.
+        val at = if (force || stroke.straight) Pt(vx, vy) else stabilizer.step(vx, vy)
+        val p = viewport.viewportToContent(at)
         val t = (timeMs - strokeStartTimeMs).toDouble()
         if (stroke.straight) {
             stroke.setStraightEnd(Sample(p.x, p.y, pressure.coerceIn(0.0, 1.0), t))

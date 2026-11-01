@@ -72,6 +72,7 @@ import com.xnotes.core.pal.Pen
 import com.xnotes.core.pal.Renderer
 import com.xnotes.core.pal.TextMeasurer
 import com.xnotes.core.pdf.MarkupPainter
+import com.xnotes.core.stroke.PenStabilizer
 import com.xnotes.core.stroke.RecognizedShape
 import com.xnotes.core.stroke.Scribble
 import com.xnotes.core.stroke.Sample
@@ -233,6 +234,12 @@ class InteractionController(
 
     /** Whether holding a freehand ink stroke still snaps it to a recognized shape (spec: "hold to snap"). */
     var detectShapes: Boolean = false
+
+    /** Pen stabilisation, 0 (off) .. 100 (high): how far the drawn path trails the nib. */
+    var penStabilization: Double = 0.0
+
+    /** The stabiliser the stroke currently under the pen is written through. */
+    private val stabilizer = PenStabilizer()
 
     /** Tool the stylus side button activates while held, or null to ignore the button. */
     var penButtonTool: Tool? = Tool.ERASER
@@ -1221,7 +1228,10 @@ class InteractionController(
         snapRunStartEdge = null
         snapCurrentEdge = null
         snapPenViewport = null
-        val first = state.toPageSpace(pageIndex, state.viewportToContent(magnetize(downViewport)))
+        val downVp = magnetize(downViewport)
+        stabilizer.lambda = PenStabilizer.lambdaFor(penStabilization)
+        stabilizer.begin(downVp.x, downVp.y)
+        val first = state.toPageSpace(pageIndex, state.viewportToContent(downVp))
         stroke.addSample(Sample(first.x, first.y, pressure)) // first sample: t = 0
         liveStroke = stroke
         strokePageIndex = pageIndex
@@ -1264,7 +1274,11 @@ class InteractionController(
         val pi = strokePageIndex ?: return
         if (state.pageRects.getOrNull(pi) == null) return
         val vp = magnetize(Pt(vx, vy))
-        val content = state.viewportToContent(vp)
+        // The stabiliser runs on the way in, in viewport px, and leaves the lift-off point and a
+        // straight line alone: a straight segment has no shake to steady, and ink must finish
+        // exactly where the nib lifted.
+        val drawn = if (force || stroke.straight) vp else stabilizer.step(vp.x, vp.y)
+        val content = state.viewportToContent(drawn)
         // The pen has walked onto another page: carry the stroke over rather than let it slide
         // under the paper. A straight line is one segment by definition and never hands over.
         if (!stroke.straight) {
